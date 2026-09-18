@@ -1,27 +1,117 @@
-# Compiled class file
-*.class
+# ==========================================
+# Dependencies
+# ==========================================
+node_modules/
+.pnp
+.pnp.js
 
-# Log file
-*.log
+# ==========================================
+# Expo & Metro
+# ==========================================
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.metro-health-check*
 
-# BlueJ files
-*.ctxt
+# ==========================================
+# Environment Variables & Secrets
+# ==========================================
+.env
+.env.*
+!.env.example
+.env*.local
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
-
-# Kotlin Gradle plugin data, see https://kotlinlang.org/docs/whatsnew20.html#new-directory-for-kotlin-data-in-gradle-projects
+# ==========================================
+# Android Native & Jetpack Compose
+# ==========================================
 .kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.keystore
+!debug.keystore
+*.mobileprovision
+
+# Android SDK 本地路径配置 (严禁提交，各机器不同)
+local.properties
+android/local.properties
+
+# Android 构建与缓存目录 (当提交 android/ 原生代码时生效)
+.gradle/
+android/.gradle/
+build/
+android/build/
+android/app/build/
+android/.cxx/
+captures/
+
+# ==========================================
+# Expo 自动生成的原生目录 (如使用完全 Bare 工作流可注释此两行)
+# ==========================================
+/ios
+/android
+
+# ==========================================
+# IDE & Code Editors
+# ==========================================
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+cmake-build-*/
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+.history/
+
+# Claude / AI 辅助工具本地缓存
+.claude/
+
+# ==========================================
+# Debug Logs
+# ==========================================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# ==========================================
+# Testing & Code Quality
+# ==========================================
+coverage/
+.nyc_output/
+*.tsbuildinfo
+.eslintcache
+
+# ==========================================
+# Operating System Files
+# ==========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+*.pem
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.directory
