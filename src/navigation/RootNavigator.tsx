@@ -14,7 +14,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
  * - 若未选择身份：进入极简 2 选 1 身份切换页 (UserSelect)。
  */
 export const RootNavigator: React.FC = () => {
-  const currentUserId = useAuthStore((state) => state.currentUserId);
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
 
   return (
     <Stack.Navigator
@@ -22,11 +22,11 @@ export const RootNavigator: React.FC = () => {
         headerShown: false,
       }}
     >
-      {currentUserId ? (
-        // 已经有选择过身份（或本地记住），直达主空间，零引导流程
+      {isLoggedIn ? (
+        // 已完成后端 JWT 登录 → 直达主空间
         <Stack.Screen name="MainTabs" component={MainTabNavigator} />
       ) : (
-        // 未选择身份时，极简两人身份卡片点击即进
+        // 未登录 → 极简两人身份卡片 + 密码验证
         <Stack.Screen
           name="UserSelect"
           component={UserSelectScreen}

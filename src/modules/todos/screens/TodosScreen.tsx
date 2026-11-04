@@ -58,7 +58,6 @@ export const TodosScreen: React.FC = () => {
     if (!newTitle.trim()) return;
     addTodo({
       title: newTitle.trim(),
-      creatorId: currentUserId,
       assignedToId: assignedTo,
     });
     setNewTitle('');
@@ -72,7 +71,8 @@ export const TodosScreen: React.FC = () => {
 
   const handleNudge = (id: string) => {
     nudgeTodo(id);
-    Alert.alert('催办已发送', `已向 ${partnerUser.name} 发送催办提醒！`);
+    // 乐观更新后 TodoCard 的 nudgeCount 立即 +1 → 视觉上已经看到 "催一下(N)"
+    // REST 异步上报后端 broadcastToPartner —— 失败不阻塞（下次 sync 自动对齐）
     triggerWidgetSync();
   };
 

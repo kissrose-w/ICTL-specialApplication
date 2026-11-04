@@ -1,9 +1,13 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FileText, Wallet, Heart, Image as ImageIcon, Sparkles } from 'lucide-react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { SpaceStackParamList } from '../../../types/navigation';
 
-export const SpaceScreen: React.FC = () => {
+type Props = NativeStackScreenProps<SpaceStackParamList, 'SpaceHome'>;
+
+export const SpaceScreen: React.FC<Props> = ({ navigation }) => {
   const modules = [
     {
       id: 'notes',
@@ -12,6 +16,8 @@ export const SpaceScreen: React.FC = () => {
       icon: FileText,
       color: '#f59e0b',
       bg: 'bg-amber-50',
+      enabled: true,
+      action: () => navigation.navigate('NotesList'),
     },
     {
       id: 'ledger',
@@ -20,6 +26,8 @@ export const SpaceScreen: React.FC = () => {
       icon: Wallet,
       color: '#10b981',
       bg: 'bg-emerald-50',
+      enabled: false,
+      action: () => Alert.alert('敬请期待', '账本模块开发中，敬请期待 ✨'),
     },
     {
       id: 'anniversary',
@@ -28,6 +36,8 @@ export const SpaceScreen: React.FC = () => {
       icon: Heart,
       color: '#f43f5e',
       bg: 'bg-rose-50',
+      enabled: false,
+      action: () => Alert.alert('敬请期待', '纪念日谱模块开发中 ✨'),
     },
     {
       id: 'photos',
@@ -36,6 +46,8 @@ export const SpaceScreen: React.FC = () => {
       icon: ImageIcon,
       color: '#6366f1',
       bg: 'bg-indigo-50',
+      enabled: false,
+      action: () => Alert.alert('敬请期待', '照片墙模块开发中 ✨'),
     },
   ];
 
@@ -62,7 +74,10 @@ export const SpaceScreen: React.FC = () => {
             return (
               <TouchableOpacity
                 key={m.id}
-                className="w-[48%] bg-white rounded-2xl p-4 mb-4 border border-slate-200 shadow-sm"
+                onPress={m.action}
+                className={`w-[48%] bg-white rounded-2xl p-4 mb-4 border shadow-sm ${
+                  m.enabled ? 'border-slate-200' : 'border-slate-100 opacity-60'
+                }`}
               >
                 <View
                   className={`w-10 h-10 rounded-xl items-center justify-center mb-3 ${m.bg}`}
@@ -75,6 +90,11 @@ export const SpaceScreen: React.FC = () => {
                 <Text className="text-xs text-slate-400 leading-tight">
                   {m.desc}
                 </Text>
+                {!m.enabled && (
+                  <Text className="text-[9px] text-slate-300 font-bold mt-2">
+                    开发中
+                  </Text>
+                )}
               </TouchableOpacity>
             );
           })}

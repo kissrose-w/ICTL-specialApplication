@@ -1,21 +1,33 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Users, LogOut, RotateCcw, Database, Shield } from 'lucide-react-native';
+import { Settings, Users, LogOut, RotateCcw, Database, Shield, Circle } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
 import { useTodoStore } from '../modules/todos/store/todoStore';
 import { FIXED_USERS, FixedUserId } from '../config/users';
 
 export const SettingsScreen: React.FC = () => {
-  const { currentUserId, loginAs, logout } = useAuthStore();
+  const { currentUserId, partnerOnline, logout } = useAuthStore();
   const todos = useTodoStore((state) => state.todos);
 
   const currentUser = currentUserId ? FIXED_USERS[currentUserId] : FIXED_USERS.user_a;
 
   const handleSwitchIdentity = () => {
-    const targetUserId: FixedUserId = currentUserId === 'user_a' ? 'user_b' : 'user_a';
-    loginAs(targetUserId);
-    Alert.alert('已切换身份', `当前操作者已切换为：${FIXED_USERS[targetUserId].name}`);
+    Alert.alert(
+      '切换身份',
+      '切换身份需要退出当前登录并重新验证密码，确定继续吗？',
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '退出并重新选择',
+          style: 'default',
+          onPress: () => {
+            logout();
+            // logout 后 RootNavigator 自动切回 UserSelectScreen
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -57,6 +69,25 @@ export const SettingsScreen: React.FC = () => {
               <Text className="text-xs font-bold text-slate-700">一键换为TA</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Partner Online Status */}
+        <View className="bg-white rounded-2xl p-4 mb-4 border border-slate-200 shadow-sm flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <Circle
+              size={10}
+              color={partnerOnline ? '#10b981' : '#94a3b8'}
+              fill={partnerOnline ? '#10b981' : '#94a3b8'}
+            />
+            <Text className="text-sm font-bold text-slate-700 ml-2">伴侣在线状态</Text>
+          </View>
+          <Text
+            className={`text-xs font-bold ${
+              partnerOnline ? 'text-emerald-600' : 'text-slate-400'
+            }`}
+          >
+            {partnerOnline ? '在线' : '离线'}
+          </Text>
         </View>
 
         {/* Storage & Sync Status */}
