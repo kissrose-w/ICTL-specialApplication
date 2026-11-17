@@ -41,7 +41,7 @@ export interface AuthState {
   // ============ Actions ============
   /** 调后端 /api/auth/login */
   loginWithBackend: (
-    userId: FixedUserId,
+    identifier: string,
     password: string
   ) => Promise<{ success: true } | { success: false; error: LoginError }>;
 
@@ -70,9 +70,9 @@ export const useAuthStore = create<AuthState>()(
 
       // ============ Actions ============
 
-      loginWithBackend: async (userId, password) => {
+      loginWithBackend: async (identifier, password) => {
         try {
-          const result = await loginApi(userId, password);
+          const result = await loginApi(identifier, password);
 
           // 从后端返回的 user/partner 里建立 FixedUserId ↔ UUID 映射
           // 后端 username 永远是 'user_a' / 'user_b'，用这个来确定 FixedUserId

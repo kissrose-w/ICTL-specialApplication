@@ -130,8 +130,12 @@ export function toBackendCreateTodo(params: {
 }): BackendCreateTodoRequest {
   const body: BackendCreateTodoRequest = {
     title: params.title,
-    description: params.description ?? null,
   };
+
+  // 后端 description 只接受 string（可选），传 null 会被 400 拒绝
+  if (params.description) {
+    body.description = params.description;
+  }
 
   if (params.assigneeFixed) {
     body.assigneeId = fixedToUuid(params.assigneeFixed, params.idMap);

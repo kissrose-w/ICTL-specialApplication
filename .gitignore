@@ -22,6 +22,9 @@ expo-env.d.ts
 !.env.example
 .env*.local
 
+# 本地 MCP 配置（本地工具链配置，不进仓库）
+.trae/mcp.json
+
 # ==========================================
 # Android Native & Jetpack Compose
 # ==========================================

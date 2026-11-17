@@ -17,7 +17,7 @@ export type SpaceStackParamList = {
 };
 
 export type RootStackParamList = {
-  UserSelect: undefined;
+  Login: undefined;
   MainTabs: NavigatorScreenParams<MainTabParamList>;
 };
 

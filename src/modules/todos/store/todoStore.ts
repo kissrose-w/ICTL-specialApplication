@@ -101,11 +101,12 @@ export const useTodoStore = create<TodoStoreState>()(
             // 后端返回的完整对象（有真实 UUID）
             const frontendTodo = fromBackendTodos([created], idMap)[0];
 
-            // 移除临时项 + 合并真实后端对象
+            // 移除临时项 + 合并真实后端对象（保持新建项在最前，折叠视图里立即可见）
             set((state) => ({
-              todos: state.todos
-                .filter((t) => t.id !== localTodo.id)
-                .concat([frontendTodo]),
+              todos: [
+                frontendTodo,
+                ...state.todos.filter((t) => t.id !== localTodo.id),
+              ],
             }));
           } catch (err) {
             console.warn('[TodoStore] addTodo REST failed, keeping pending:', err);

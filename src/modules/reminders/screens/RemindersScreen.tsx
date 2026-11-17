@@ -1,21 +1,27 @@
 /**
  * Phase 5 — 精准提醒与倒数日
- * 
- * 改造自原来的"原生闹钟测试页"：
- *   - 顶部纪念日倒计时卡片（保留）
- *   - 中间提醒列表（新增）
- *   - 创建提醒入口（新增）
- *   - 原生 AlarmManager 精准唤醒（自动联动 reminderStore）
+ *
+ * 设计对齐（docs/ui/proposal/ui-proposal.html）：
+ *   - 安静面板承载纪念日倒计时（宋体大数字，不用渐变）
+ *   - 两个轻量创建入口：给自己设 / 给 Partner 设
+ *   - 即将到来改为「日期 + 标题 + 身份点」连续行
+ *   - 原生闹钟测试移出主界面（见「我的 › 开发工具」）
  */
 
 import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, Modal, Pressable, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AlarmClock, Calendar, Zap, BellRing, Plus, Trash2, Clock, User } from 'lucide-react-native';
+import { AlarmClock } from 'lucide-react-native';
 import { useReminderStore } from '../store/reminderStore';
 import { FIXED_USERS, type FixedUserId } from '../../../config/users';
 import { useAuthStore } from '../../../store/authStore';
-import { alarmBridge } from '../../../native-bridge/alarmBridge';
+
+function formatTrigger(iso: string) {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1} 月 ${d.getDate()} 日 ${String(d.getHours()).padStart(2, '0')}:${String(
+    d.getMinutes()
+  ).padStart(2, '0')}`;
+}
 
 export const RemindersScreen: React.FC = () => {
   const reminders = useReminderStore((state) => state.reminders);
@@ -23,10 +29,9 @@ export const RemindersScreen: React.FC = () => {
   const deleteReminder = useReminderStore((state) => state.deleteReminder);
   const myId = useAuthStore((state) => state.currentUserId) ?? 'user_a';
   const partnerId = myId === 'user_a' ? 'user_b' : 'user_a';
-  const partnerUser = FIXED_USERS[partnerId];
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [modalTarget, setModalTarget] = useState<FixedUserId>(myId); // 给自己 or 给伴侣
+  const [modalTarget, setModalTarget] = useState<FixedUserId>(myId);
   const [modalDateTime, setModalDateTime] = useState('');
   const [modalTitle, setModalTitle] = useState('');
 
@@ -37,17 +42,17 @@ export const RemindersScreen: React.FC = () => {
       .sort((a, b) => new Date(a.triggerAt).getTime() - new Date(b.triggerAt).getTime());
   }, [reminders]);
 
-  /** 已经过去但还没被 cron 标记 sent 的 */
-  const pastReminders = useMemo(() => {
-    return reminders.filter((r) => new Date(r.triggerAt).getTime() < Date.now() && r.status === 'pending');
-  }, [reminders]);
-
   const openCreateModal = (targetUser: FixedUserId) => {
     setModalTarget(targetUser);
     setModalTitle('');
-    // 默认: 5 分钟后
+    // 默认: 5 分钟后（本地时间，避免 toISOString 的 UTC 偏移）
     const in5min = new Date(Date.now() + 5 * 60 * 1000);
-    setModalDateTime(in5min.toISOString().slice(0, 16)); // YYYY-MM-DDTHH:mm
+    const pad = (n: number) => String(n).padStart(2, '0');
+    setModalDateTime(
+      `${in5min.getFullYear()}-${pad(in5min.getMonth() + 1)}-${pad(in5min.getDate())}T${pad(
+        in5min.getHours()
+      )}:${pad(in5min.getMinutes())}`
+    );
     setShowCreateModal(true);
   };
 
@@ -65,7 +70,9 @@ export const RemindersScreen: React.FC = () => {
     addReminder({
       targetUserFixed: modalTarget,
       triggerAt,
-      title: modalTitle.trim() || (modalTarget === myId ? '我的专属提醒' : `${FIXED_USERS[modalTarget].name}的专属提醒`),
+      title:
+        modalTitle.trim() ||
+        (modalTarget === myId ? '我的专属提醒' : 'Partner 的专属提醒'),
     });
     setShowCreateModal(false);
   };
@@ -81,215 +88,181 @@ export const RemindersScreen: React.FC = () => {
     ]);
   };
 
-  const triggerTestAlarm = async () => {
-    const in5Seconds = Date.now() + 5000;
-    const success = await alarmBridge.scheduleExactAlarm({
-      alarmId: 'test-alarm-1',
-      triggerTimestamp: in5Seconds,
-      title: '双人专属强提醒',
-      message: '该准备出门啦！',
-      isFullScreenWakeup: true,
-    });
-
-    if (success) {
-      Alert.alert('闹钟已设定', '已向 Android AlarmManager 注册 5 秒后的精准全屏强提醒。');
-    }
-  };
-
   return (
-    <SafeAreaView className="flex-1 bg-slate-100">
-      {/* Header */}
-      <View className="px-5 pt-3 pb-4 bg-white border-b border-slate-200">
-        <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-xl font-black text-slate-800 tracking-tight">精准提醒</Text>
-            <Text className="text-xs text-slate-500 mt-0.5">Android AlarmManager 精准唤醒 · 桌面倒数</Text>
+    <SafeAreaView className="flex-1 bg-paper" edges={['top']}>
+      <View className="px-[22px] flex-1">
+        {/* 页头 */}
+        <View className="pt-2">
+          <Text className="text-[11px] text-muted tracking-[1px]">不错过两个人的小事</Text>
+          <View className="flex-row items-end justify-between mt-1">
+            <Text
+              className="text-[30px] text-ink leading-[34px]"
+              style={{ fontFamily: 'serif', fontWeight: '600' }}
+            >
+              提醒
+            </Text>
+            <TouchableOpacity onPress={() => openCreateModal(myId)} className="pb-1">
+              <Text className="text-[12px] text-clay">+ 新建</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            onPress={() => openCreateModal(myId)}
-            className="flex-row items-center bg-amber-500 rounded-xl px-3 py-2 active:bg-amber-600"
-          >
-            <Plus size={16} color="#ffffff" />
-            <Text className="text-white text-sm font-bold ml-1">创建</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
-        {/* Anniversary Countdown Cards —— 暂时固定 mock 数据 */}
-        <View className="bg-gradient-to-r from-rose-500 to-pink-500 rounded-2xl p-5 mb-5 shadow-sm">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-white text-base font-bold">相识恋爱纪念日</Text>
-            <Calendar size={18} color="#ffffff" />
-          </View>
-          <View className="flex-row items-baseline mt-4">
-            <Text className="text-white text-4xl font-extrabold">520</Text>
-            <Text className="text-rose-100 text-sm ml-2">天</Text>
-          </View>
-          <Text className="text-rose-100 text-xs mt-2">下一个整百天倒计时：80 天</Text>
         </View>
 
-        {/* Create quick-entry: 给自己 / 给TA */}
-        <View className="flex-row justify-between mb-4">
-          <TouchableOpacity
-            onPress={() => openCreateModal(myId)}
-            className="flex-1 mr-2 bg-white rounded-xl py-3 px-4 border border-slate-200 flex-row items-center active:bg-slate-50"
-          >
-            <BellRing size={16} color="#2563eb" />
-            <Text className="text-slate-700 text-sm font-bold ml-2">给自己设</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => openCreateModal(partnerId)}
-            className="flex-1 ml-2 bg-white rounded-xl py-3 px-4 border border-slate-200 flex-row items-center active:bg-slate-50"
-          >
-            <User size={16} color="#ec4899" />
-            <Text className="text-slate-700 text-sm font-bold ml-2">给{partnerUser.name}设</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Reminder List */}
-        <Text className="text-sm font-bold text-slate-600 mb-2">
-          即将到来 ({upcomingReminders.length})
-        </Text>
-
-        {upcomingReminders.length === 0 ? (
-          <View className="bg-white rounded-xl p-6 border border-slate-200 items-center mb-4">
-            <Clock size={32} color="#cbd5e1" />
-            <Text className="text-slate-400 text-sm mt-3">还没有待触发的提醒</Text>
-            <Text className="text-slate-300 text-xs mt-1">点右上角 + 创建你的第一条</Text>
-          </View>
-        ) : (
-          upcomingReminders.map((r) => {
-            const targetUser = FIXED_USERS[r.targetUserId];
-            const minutesLeft = Math.round((new Date(r.triggerAt).getTime() - Date.now()) / 60000);
-            return (
-              <View
-                key={r.id}
-                className="bg-white rounded-xl p-4 border border-slate-200 mb-3 flex-row items-center justify-between"
+        <ScrollView
+          className="flex-1 mt-[18px]"
+          contentContainerStyle={{ paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* 纪念日面板 */}
+          <View className="border border-line bg-[#FBFAF6] rounded-2xl px-5 py-5 mb-[22px]">
+            <Text className="text-[11px] text-muted tracking-[1.5px]">在一起</Text>
+            <View className="flex-row items-baseline mt-2">
+              <Text
+                className="text-[56px] text-ink leading-[56px] tracking-[-1px]"
+                style={{ fontFamily: 'serif' }}
               >
-                <View className="flex-1">
-                  <Text className="text-base font-bold text-slate-800">{r.title || '专属提醒'}</Text>
-                  <View className="flex-row items-center mt-1">
-                    <View
-                      className="w-3 h-3 rounded mr-1.5"
-                      style={{ backgroundColor: targetUser.badgeColor }}
-                    />
-                    <Text className="text-xs text-slate-500">
-                      给 {targetUser.name} · {new Date(r.triggerAt).toLocaleString()}
-                    </Text>
-                  </View>
-                  <Text className="text-xs text-amber-600 mt-0.5">
-                    {minutesLeft >= 60
-                      ? `${Math.round(minutesLeft / 60)}小时${minutesLeft % 60}分后`
-                      : minutesLeft > 0
-                      ? `${minutesLeft}分钟后`
-                      : '即将到期'}
-                  </Text>
-                </View>
+                520
+              </Text>
+              <Text className="text-[13px] text-muted ml-2">天</Text>
+            </View>
+            <Text className="text-[11.5px] text-muted mt-3 pt-3 border-t border-line">
+              距离下一个整百天 · 80 天
+            </Text>
+          </View>
 
-                <View className="flex-row items-center">
-                  {r.localAlarmScheduled && (
-                    <AlarmClock size={14} color="#10b981" className="mr-2" />
-                  )}
-                  <TouchableOpacity
-                    onPress={() => handleDeleteReminder(r.id)}
-                    className="w-8 h-8 items-center justify-center"
-                  >
-                    <Trash2 size={16} color="#ef4444" />
+          {/* 两个创建入口 */}
+          <View className="flex-row mb-6">
+            <TouchableOpacity
+              onPress={() => openCreateModal(myId)}
+              className="flex-1 mr-[5px] flex-row items-center justify-center border border-line bg-surface rounded-xl py-[11px]"
+            >
+              <View className="w-1.5 h-1.5 rounded-full bg-ida mr-1.5" />
+              <Text className="text-[12.5px] text-ink-2">给自己设</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => openCreateModal(partnerId)}
+              className="flex-1 ml-[5px] flex-row items-center justify-center border border-line bg-surface rounded-xl py-[11px]"
+            >
+              <View className="w-1.5 h-1.5 rounded-full bg-idb mr-1.5" />
+              <Text className="text-[12.5px] text-ink-2">给 Partner 设</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* 即将到来 */}
+          <View className="flex-row items-baseline justify-between mb-1.5">
+            <Text className="text-[13px] font-semibold text-ink">即将到来</Text>
+            <Text className="text-[11px] text-muted">{upcomingReminders.length}</Text>
+          </View>
+
+          {upcomingReminders.length === 0 ? (
+            <Text className="text-[12.5px] text-muted py-[18px] border-b border-line">
+              还没有提醒。新建第一条，让它替你们记住。
+            </Text>
+          ) : (
+            upcomingReminders.map((r, index) => {
+              const targetUser = FIXED_USERS[r.targetUserId];
+              const isMine = r.targetUserId === myId;
+              return (
+                <View
+                  key={r.id}
+                  className={`flex-row items-center py-[15px] ${
+                    index === upcomingReminders.length - 1 ? '' : 'border-b border-line'
+                  }`}
+                >
+                  <View className="flex-1 min-w-0">
+                    <Text className="text-[14.5px] text-ink leading-[21px]">
+                      {r.title || '专属提醒'}
+                    </Text>
+                    <View className="flex-row items-center mt-[5px]">
+                      <View
+                        className="w-1.5 h-1.5 rounded-full mr-1.5"
+                        style={{ backgroundColor: targetUser.badgeColor }}
+                      />
+                      <Text className="text-[11px] text-muted">
+                        {isMine ? '给自己' : '给 Partner'} · {formatTrigger(r.triggerAt)}
+                      </Text>
+                      {r.localAlarmScheduled ? (
+                        <AlarmClock size={11} color="#A9A296" className="ml-1.5" />
+                      ) : null}
+                    </View>
+                  </View>
+                  <TouchableOpacity onPress={() => handleDeleteReminder(r.id)} className="ml-2 py-1 px-1">
+                    <Text className="text-[11px] text-[#A9A296]">取消</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
-            );
-          })
-        )}
+              );
+            })
+          )}
 
-        {/* Test Card —— 开发期保留，验证原生 AlarmManager 链路 */}
-        <View className="bg-white rounded-2xl p-5 mt-4 border border-slate-200 shadow-sm">
-          <View className="flex-row items-center mb-2">
-            <Zap size={18} color="#f59e0b" />
-            <Text className="text-base font-bold text-slate-800 ml-2">开发调试</Text>
-          </View>
-          <Text className="text-xs text-slate-500 mb-3 leading-relaxed">
-            验证 Android AlarmManager 原生精准唤醒是否正常（设一个 5 秒后的全屏闹钟）。
+          <Text className="text-[11px] text-[#A9A296] mt-4">
+            开发工具与原生闹钟测试已移至「我的 › 开发工具」
           </Text>
-          <TouchableOpacity
-            onPress={triggerTestAlarm}
-            className="flex-row items-center justify-center bg-amber-50 rounded-xl py-3 border border-amber-200"
-          >
-            <BellRing size={14} color="#f59e0b" />
-            <Text className="text-amber-700 font-bold text-sm ml-2">测试 5 秒原生唤醒</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
 
-      {/* Create Reminder Modal */}
+      {/* 创建提醒 */}
       <Modal
         visible={showCreateModal}
         transparent
         animationType="slide"
         onRequestClose={() => setShowCreateModal(false)}
       >
-        <Pressable
-          className="flex-1 bg-black/40 justify-end"
-          onPress={() => setShowCreateModal(false)}
-        >
-          <Pressable className="bg-white rounded-t-3xl p-5" onPress={() => {}}>
-            <Text className="text-lg font-black text-slate-800 mb-4">创建专属提醒</Text>
+        <Pressable className="flex-1 bg-black/40 justify-end" onPress={() => setShowCreateModal(false)}>
+          <Pressable className="bg-surface rounded-t-3xl px-5 pt-5 pb-6" onPress={() => {}}>
+            <Text className="text-lg font-semibold text-ink mb-4">创建提醒</Text>
 
-            {/* Target user selector */}
             <View className="flex-row mb-4">
               <TouchableOpacity
                 onPress={() => setModalTarget(myId)}
-                className={`flex-1 py-2.5 rounded-xl mr-2 border ${
-                  modalTarget === myId ? 'bg-blue-50 border-blue-500' : 'border-slate-200'
+                className={`flex-1 py-2.5 rounded-xl mr-[5px] border ${
+                  modalTarget === myId ? 'bg-clay-soft border-clay' : 'border-line'
                 }`}
               >
-                <Text className="text-center font-bold text-sm" style={{ color: modalTarget === myId ? '#2563eb' : '#64748b' }}>
+                <Text
+                  className="text-center text-[13px]"
+                  style={{ color: modalTarget === myId ? '#A95D44' : '#857E73' }}
+                >
                   提醒我自己
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setModalTarget(partnerId)}
-                className={`flex-1 py-2.5 rounded-xl border ${
-                  modalTarget === partnerId ? 'bg-pink-50 border-pink-500' : 'border-slate-200'
+                className={`flex-1 py-2.5 rounded-xl ml-[5px] border ${
+                  modalTarget === partnerId ? 'bg-clay-soft border-clay' : 'border-line'
                 }`}
               >
-                <Text className="text-center font-bold text-sm" style={{ color: modalTarget === partnerId ? '#ec4899' : '#64748b' }}>
-                  提醒{partnerUser.name}
+                <Text
+                  className="text-center text-[13px]"
+                  style={{ color: modalTarget === partnerId ? '#A95D44' : '#857E73' }}
+                >
+                  提醒 Partner
                 </Text>
               </TouchableOpacity>
             </View>
 
-            <Text className="text-slate-600 text-xs mb-1.5">提醒标题（可选）</Text>
+            <Text className="text-[11px] text-muted mb-1.5">提醒标题（可选）</Text>
             <TextInput
               value={modalTitle}
               onChangeText={setModalTitle}
               placeholder="例如: 下班路上买牛奶"
-              placeholderTextColor="#94a3b8"
-              className="border border-slate-200 rounded-xl px-3 py-2.5 text-slate-700 mb-3"
+              placeholderTextColor="#A9A296"
+              className="border border-line rounded-xl px-3 py-2.5 text-[14px] text-ink mb-3"
             />
 
-            <Text className="text-slate-600 text-xs mb-1.5">触发时间 (YYYY-MM-DDTHH:mm)</Text>
+            <Text className="text-[11px] text-muted mb-1.5">触发时间 (YYYY-MM-DDTHH:mm)</Text>
             <TextInput
               value={modalDateTime}
               onChangeText={setModalDateTime}
               placeholder="2025-12-31T18:00"
-              placeholderTextColor="#94a3b8"
-              className="border border-slate-200 rounded-xl px-3 py-2.5 text-slate-700 mb-4"
+              placeholderTextColor="#A9A296"
+              className="border border-line rounded-xl px-3 py-2.5 text-[14px] text-ink mb-4"
             />
 
-            <TouchableOpacity
-              onPress={handleCreateReminder}
-              className="bg-amber-500 rounded-xl py-3 active:bg-amber-600"
-            >
-              <Text className="text-white font-bold text-base text-center">创建提醒</Text>
+            <TouchableOpacity onPress={handleCreateReminder} className="bg-clay rounded-xl py-3">
+              <Text className="text-white text-[15px] text-center">创建提醒</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => setShowCreateModal(false)}
-              className="py-3 active:bg-slate-50"
-            >
-              <Text className="text-slate-500 text-sm text-center">取消</Text>
+            <TouchableOpacity onPress={() => setShowCreateModal(false)} className="py-3">
+              <Text className="text-muted text-[13px] text-center">取消</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>

@@ -1,19 +1,29 @@
 /**
  * Phase 4 — 便签编辑页
- * 
+ *
  * 新建 (noteId undefined) vs 编辑 (noteId 有值)
  * 乐观更新 + async REST — 复用 noteStore.addNote / updateNoteLocal
+ *
+ * 设计对齐（docs/ui/proposal/ui-proposal.html）：
+ *   - 头部：返回 → 标题 → 置顶 / 删除 / 保存
+ *   - 标题 22px 宋体，正文 14px 行高 1.95
+ *   - 底部常驻脏态与字数
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Save, Pin, Trash2 } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useNoteStore } from '../store/noteStore';
 import type { SpaceStackParamList } from '../../../types/navigation';
 
 type Props = NativeStackScreenProps<SpaceStackParamList, 'NoteEdit'>;
+
+function formatTime(iso: string) {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
 
 export const NoteEditScreen: React.FC<Props> = ({ navigation, route }) => {
   const { noteId } = route.params;
@@ -40,8 +50,11 @@ export const NoteEditScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   }, [title, content, isPinned, existingNote]);
 
+  const hasInput = !!title.trim() || !!content.trim();
+  const canSave = isEditing ? isDirty : hasInput;
+
   const handleSave = () => {
-    if (!title.trim() && !content.trim()) {
+    if (!hasInput) {
       Alert.alert('提示', '便签标题或内容至少填写一项');
       return;
     }
@@ -64,7 +77,7 @@ export const NoteEditScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleDelete = () => {
     if (!noteId) return;
-    Alert.alert('删除便签', '确定要删除这条便签吗？伴侣也会同步删除。', [
+    Alert.alert('删除便签', '确定要删除这条便签吗？Partner 也会同步删除。', [
       { text: '取消', style: 'cancel' },
       {
         text: '删除',
@@ -77,82 +90,99 @@ export const NoteEditScreen: React.FC<Props> = ({ navigation, route }) => {
     ]);
   };
 
+  const handleBack = () => {
+    if (isDirty) {
+      Alert.alert('未保存', '有更改未保存，确定离开？', [
+        { text: '取消', style: 'cancel' },
+        { text: '离开', style: 'destructive', onPress: () => navigation.goBack() },
+      ]);
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  const handleTogglePin = () => {
+    if (isEditing && noteId) {
+      togglePin(noteId);
+    }
+    setIsPinned((prev) => !prev);
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      {/* Header */}
-      <View className="px-4 py-3 border-b border-slate-200 flex-row items-center justify-between">
-        <TouchableOpacity
-          onPress={() => (isDirty ? Alert.alert('未保存', '有更改未保存，确定离开？', [
-            { text: '取消', style: 'cancel' },
-            { text: '离开', style: 'destructive', onPress: () => navigation.goBack() },
-          ]) : navigation.goBack())}
-          className="w-9 h-9 items-center justify-center -ml-2"
-        >
-          <ArrowLeft size={22} color="#334155" />
-        </TouchableOpacity>
+    <SafeAreaView className="flex-1 bg-paper" edges={['top']}>
+      <View className="px-[22px] flex-1">
+        {/* 头部操作 */}
+        <View className="flex-row items-center justify-between py-3 border-b border-line">
+          <TouchableOpacity onPress={handleBack} className="-ml-1 py-1 pr-2">
+            <ChevronLeft size={22} color="#5C564C" strokeWidth={1.6} />
+          </TouchableOpacity>
 
-        <Text className="text-base font-bold text-slate-800">
-          {isEditing ? '编辑便签' : '新建便签'}
-        </Text>
+          <Text className="text-[12.5px] text-muted tracking-[0.5px]">
+            {isEditing ? '编辑便签' : '新建便签'}
+          </Text>
 
-        <View className="flex-row items-center">
-          {isEditing && noteId && (
+          <View className="flex-row items-center">
             <TouchableOpacity
-              onPress={handleDelete}
-              className="w-9 h-9 items-center justify-center mr-1"
+              onPress={handleTogglePin}
+              className={`rounded-full px-2 py-[3px] border ${
+                isPinned ? 'bg-clay-soft border-clay-border' : 'border-line'
+              }`}
             >
-              <Trash2 size={18} color="#ef4444" />
+              <Text className={`text-[11px] ${isPinned ? 'text-clay' : 'text-muted'}`}>
+                {isPinned ? '已置顶' : '置顶'}
+              </Text>
             </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            onPress={() => {
-              if (isEditing && noteId) {
-                togglePin(noteId);
-                setIsPinned((prev) => !prev); // 乐观更新本地 UI
-              } else {
-                setIsPinned((prev) => !prev);
-              }
-            }}
-            className={`w-9 h-9 items-center justify-center mr-1 ${
-              isPinned ? 'bg-amber-100 rounded-lg' : ''
-            }`}
-          >
-            <Pin size={18} color={isPinned ? '#f59e0b' : '#94a3b8'} fill={isPinned ? '#f59e0b' : 'none'} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={!isDirty && !isEditing}
-            className={`w-9 h-9 rounded-lg items-center justify-center ${
-              isDirty || !isEditing ? 'bg-amber-500' : 'bg-slate-200'
-            }`}
-          >
-            <Save size={18} color="#ffffff" />
-          </TouchableOpacity>
-        </View>
-      </View>
 
-      {/* Edit Body */}
-      <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
-        {/* Title */}
+            {isEditing && noteId ? (
+              <TouchableOpacity onPress={handleDelete} className="ml-3 py-1">
+                <Text className="text-[11px] text-[#A9A296]">删除</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={!canSave}
+              className={`ml-3 rounded-lg px-[11px] py-[6px] ${canSave ? 'bg-clay' : 'bg-[#E4DFD5]'}`}
+            >
+              <Text className="text-[11px] text-white">保存</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 标题 */}
         <TextInput
           value={title}
           onChangeText={setTitle}
           placeholder="标题"
-          placeholderTextColor="#94a3b8"
-          className="text-xl font-black text-slate-800 py-2 border-b border-slate-100"
+          placeholderTextColor="#B3ACA0"
+          className="text-[22px] text-ink py-4 border-b border-line"
+          style={{ fontFamily: 'serif', fontWeight: '600' }}
         />
 
-        {/* Content */}
+        {/* 正文 */}
         <TextInput
           value={content}
           onChangeText={setContent}
-          placeholder="开始写点什么...\n\n心愿单、购物清单、重要日期、给TA的留言..."
-          placeholderTextColor="#cbd5e1"
+          placeholder={'开始写点什么…\n\n心愿单、购物清单、重要日期、给 Partner 的留言…'}
+          placeholderTextColor="#B3ACA0"
           multiline
           textAlignVertical="top"
-          className="text-base text-slate-700 leading-relaxed py-3 min-h-[300px]"
+          className="flex-1 text-[14px] text-ink-2 py-4"
+          style={{ lineHeight: 27 }}
         />
-      </ScrollView>
+
+        {/* 底部状态 */}
+        <View className="flex-row items-center justify-between pt-3 border-t border-line mb-3">
+          <Text className={`text-[10.5px] ${isDirty ? 'text-warn' : 'text-[#A9A296]'}`}>
+            {isDirty
+              ? '已修改 · 未保存'
+              : isEditing && existingNote
+              ? `已保存 · ${formatTime(existingNote.updatedAt)}`
+              : '尚未保存'}
+          </Text>
+          <Text className="text-[10.5px] text-[#A9A296]">{content.length} 字</Text>
+        </View>
+      </View>
     </SafeAreaView>
   );
 };

@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Check, Bell, Clock, CloudOff } from 'lucide-react-native';
+import { Check } from 'lucide-react-native';
 import { TodoItem } from '../../../types/todo';
 import { FIXED_USERS, FixedUserId } from '../../../config/users';
 
 interface TodoCardProps {
   todo: TodoItem;
   currentUserId: FixedUserId;
+  isLast?: boolean;
   onToggle: (id: string) => void;
   onNudge: (id: string) => void;
 }
@@ -14,102 +15,77 @@ interface TodoCardProps {
 export const TodoCard: React.FC<TodoCardProps> = ({
   todo,
   currentUserId,
+  isLast = false,
   onToggle,
   onNudge,
 }) => {
   const isAssignedToMe = todo.assignedToId === currentUserId;
   const assignee = FIXED_USERS[todo.assignedToId];
-  const creator = FIXED_USERS[todo.creatorId];
-  const completedByUser = todo.completedBy ? FIXED_USERS[todo.completedBy] : null;
+  const completedByMe = todo.completedBy === currentUserId;
 
   return (
     <View
-      className={`p-4 mb-3 rounded-2xl border transition-all ${
-        todo.completed
-          ? 'bg-slate-50 border-slate-200 opacity-60'
-          : 'bg-white border-slate-200 shadow-sm'
-      }`}
+      className={`flex-row items-start py-[15px] ${isLast ? '' : 'border-b border-line'}`}
     >
-      <View className="flex-row items-start justify-between">
-        {/* Toggle Checkbox */}
-        <TouchableOpacity
-          onPress={() => onToggle(todo.id)}
-          className={`w-7 h-7 rounded-lg items-center justify-center mr-3 mt-0.5 border ${
-            todo.completed
-              ? 'bg-emerald-500 border-emerald-500'
-              : 'border-slate-300 bg-white'
+      <TouchableOpacity
+        onPress={() => onToggle(todo.id)}
+        className={`w-5 h-5 rounded-full items-center justify-center mt-0.5 border ${
+          todo.completed ? 'bg-ink border-ink' : 'bg-surface border-[#C9C2B5]'
+        }`}
+        style={{ borderWidth: todo.completed ? 1 : 1.4 }}
+      >
+        {todo.completed && <Check size={11} color="#FFFFFF" strokeWidth={2.6} />}
+      </TouchableOpacity>
+
+      <View className="flex-1 min-w-0 ml-3">
+        <Text
+          className={`text-[14.5px] leading-[21px] ${
+            todo.completed ? 'line-through text-[#A9A296]' : 'text-ink'
           }`}
         >
-          {todo.completed && <Check size={16} color="#ffffff" strokeWidth={3} />}
-        </TouchableOpacity>
+          {todo.title}
+        </Text>
 
-        {/* Content */}
-        <View className="flex-1 mr-2">
-          <Text
-            className={`text-base font-semibold ${
-              todo.completed ? 'line-through text-slate-400' : 'text-slate-800'
-            }`}
-          >
-            {todo.title}
-          </Text>
+        {todo.description ? (
+          <Text className="text-[12px] text-muted mt-1">{todo.description}</Text>
+        ) : null}
 
-          {todo.description ? (
-            <Text className="text-xs text-slate-500 mt-1">{todo.description}</Text>
-          ) : null}
-
-          {/* Badges & Meta */}
-          <View className="flex-row flex-wrap items-center mt-3 gap-2">
-            {/* Assignee Badge */}
-            <View
-              className={`px-2.5 py-1 rounded-full flex-row items-center ${
-                isAssignedToMe ? 'bg-blue-50' : 'bg-rose-50'
-              }`}
-            >
+        <View className="flex-row items-center flex-wrap mt-[5px]">
+          {todo.completed ? (
+            <View className="flex-row items-center">
               <View
-                className="w-2 h-2 rounded-full mr-1.5"
-                style={{ backgroundColor: assignee.badgeColor }}
+                className="w-1.5 h-1.5 rounded-full mr-1.5"
+                style={{ backgroundColor: completedByMe ? '#4A7196' : '#A85A6B' }}
               />
-              <Text
-                className={`text-xs font-medium ${
-                  isAssignedToMe ? 'text-blue-700' : 'text-rose-700'
-                }`}
-              >
-                {isAssignedToMe ? '我的任务' : `指派给 ${assignee.name}`}
+              <Text className="text-[11px] text-muted">
+                {completedByMe ? '我' : 'Partner'} · 今天完成
               </Text>
             </View>
+          ) : (
+            <View className="flex-row items-center">
+              <View
+                className="w-1.5 h-1.5 rounded-full mr-1.5"
+                style={{ backgroundColor: assignee.badgeColor }}
+              />
+              <Text className="text-[11px] text-muted">
+                {isAssignedToMe ? '我的任务' : '给 Partner'}
+              </Text>
+            </View>
+          )}
 
-            {/* Completed By Badge */}
-            {todo.completed && completedByUser && (
-              <View className="px-2 py-0.5 rounded bg-emerald-50">
-                <Text className="text-xs text-emerald-600">
-                  {completedByUser.name} 完成
-                </Text>
-              </View>
-            )}
-
-            {/* Offline Pending Badge */}
-            {todo.syncStatus === 'pending' && (
-              <View className="flex-row items-center px-2 py-0.5 rounded bg-amber-50">
-                <CloudOff size={11} color="#d97706" />
-                <Text className="text-[10px] text-amber-600 ml-1">本地待同步</Text>
-              </View>
-            )}
-          </View>
+          {todo.syncStatus === 'pending' ? (
+            <Text className="text-[11px] text-warn ml-1.5">· 待同步</Text>
+          ) : null}
         </View>
-
-        {/* Nudge / Action Button (仅当任务未完成且指派给对方时可用) */}
-        {!todo.completed && !isAssignedToMe && (
-          <TouchableOpacity
-            onPress={() => onNudge(todo.id)}
-            className="flex-row items-center bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl active:bg-rose-100"
-          >
-            <Bell size={13} color="#e11d48" />
-            <Text className="text-xs font-bold text-rose-600 ml-1">
-              催一下 {todo.nudgeCount > 0 ? `(${todo.nudgeCount})` : ''}
-            </Text>
-          </TouchableOpacity>
-        )}
       </View>
+
+      {!todo.completed && !isAssignedToMe ? (
+        <TouchableOpacity onPress={() => onNudge(todo.id)} className="ml-2 pt-0.5 px-1">
+          <Text className="text-[11.5px] text-clay">
+            提醒{todo.nudgeCount > 0 ? ` ${todo.nudgeCount}` : ''}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 };

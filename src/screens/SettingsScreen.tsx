@@ -1,128 +1,139 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Users, LogOut, RotateCcw, Database, Shield, Circle } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
 import { useTodoStore } from '../modules/todos/store/todoStore';
-import { FIXED_USERS, FixedUserId } from '../config/users';
+import { FIXED_USERS } from '../config/users';
+import { alarmBridge } from '../native-bridge/alarmBridge';
 
 export const SettingsScreen: React.FC = () => {
   const { currentUserId, partnerOnline, logout } = useAuthStore();
   const todos = useTodoStore((state) => state.todos);
 
-  const currentUser = currentUserId ? FIXED_USERS[currentUserId] : FIXED_USERS.user_a;
+  const myId = currentUserId ?? 'user_a';
+  const partnerUser = FIXED_USERS[myId === 'user_a' ? 'user_b' : 'user_a'];
+  const pendingCount = todos.filter((t) => t.syncStatus === 'pending').length;
 
-  const handleSwitchIdentity = () => {
-    Alert.alert(
-      '切换身份',
-      '切换身份需要退出当前登录并重新验证密码，确定继续吗？',
-      [
-        { text: '取消', style: 'cancel' },
-        {
-          text: '退出并重新选择',
-          style: 'default',
-          onPress: () => {
-            logout();
-            // logout 后 RootNavigator 自动切回 UserSelectScreen
-          },
-        },
-      ]
-    );
+  const triggerTestAlarm = async () => {
+    const in5Seconds = Date.now() + 5000;
+    const success = await alarmBridge.scheduleExactAlarm({
+      alarmId: 'test-alarm-1',
+      triggerTimestamp: in5Seconds,
+      title: '双人专属强提醒',
+      message: '该准备出门啦！',
+      isFullScreenWakeup: true,
+    });
+
+    if (success) {
+      Alert.alert('闹钟已设定', '已向 Android AlarmManager 注册 5 秒后的精准全屏强提醒。');
+    }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-100">
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
-        {/* Header */}
-        <View className="flex-row items-center mb-5">
-          <Settings size={22} color="#334155" />
-          <Text className="text-xl font-black text-slate-800 ml-2">系统设置</Text>
-        </View>
-
-        {/* Current Identity Card */}
-        <View className="bg-white rounded-2xl p-5 mb-4 border border-slate-200 shadow-sm">
-          <Text className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-            当前登入身份 (双人专属空间)
-          </Text>
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center">
-              <View
-                className="w-12 h-12 rounded-xl items-center justify-center mr-3"
-                style={{ backgroundColor: currentUser.badgeColor }}
-              >
-                <Text className="text-white font-bold text-lg">
-                  {currentUser.id === 'user_a' ? 'A' : 'B'}
-                </Text>
-              </View>
-              <View>
-                <Text className="text-base font-bold text-slate-800">
-                  {currentUser.name}
-                </Text>
-                <Text className="text-xs text-slate-500">{currentUser.title}</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              onPress={handleSwitchIdentity}
-              className="px-3 py-2 bg-slate-100 rounded-xl border border-slate-200 active:bg-slate-200"
+    <SafeAreaView className="flex-1 bg-paper" edges={['top']}>
+      <View className="px-[22px] flex-1">
+        {/* 页头 */}
+        <View className="pt-2">
+          <Text className="text-[11px] text-muted tracking-[1px]">两个人的空间</Text>
+          <View className="flex-row items-end justify-between mt-1">
+            <Text
+              className="text-[30px] text-ink leading-[34px]"
+              style={{ fontFamily: 'serif', fontWeight: '600' }}
             >
-              <Text className="text-xs font-bold text-slate-700">一键换为TA</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Partner Online Status */}
-        <View className="bg-white rounded-2xl p-4 mb-4 border border-slate-200 shadow-sm flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <Circle
-              size={10}
-              color={partnerOnline ? '#10b981' : '#94a3b8'}
-              fill={partnerOnline ? '#10b981' : '#94a3b8'}
-            />
-            <Text className="text-sm font-bold text-slate-700 ml-2">伴侣在线状态</Text>
-          </View>
-          <Text
-            className={`text-xs font-bold ${
-              partnerOnline ? 'text-emerald-600' : 'text-slate-400'
-            }`}
-          >
-            {partnerOnline ? '在线' : '离线'}
-          </Text>
-        </View>
-
-        {/* Storage & Sync Status */}
-        <View className="bg-white rounded-2xl p-5 mb-4 border border-slate-200 shadow-sm">
-          <View className="flex-row items-center mb-3">
-            <Database size={18} color="#2563eb" />
-            <Text className="text-base font-bold text-slate-800 ml-2">
-              本地 MMKV 离线数据库
+              我的
             </Text>
           </View>
-          <View className="bg-slate-50 rounded-xl p-3">
-            <View className="flex-row justify-between mb-1.5">
-              <Text className="text-xs text-slate-500">已缓存待办事项</Text>
-              <Text className="text-xs font-bold text-slate-700">{todos.length} 条</Text>
+        </View>
+
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* 当前身份（只读） */}
+          <View className="flex-row items-center pt-1 pb-4 mt-4 border-b border-line mb-1.5">
+            <View
+              className={`w-[42px] h-[42px] rounded-full items-center justify-center ${
+                myId === 'user_a' ? 'bg-ida-soft' : 'bg-idb-soft'
+              }`}
+            >
+              <Text className={`text-[14px] ${myId === 'user_a' ? 'text-ida' : 'text-idb'}`}>
+                {myId === 'user_a' ? 'A' : 'B'}
+              </Text>
             </View>
-            <View className="flex-row justify-between">
-              <Text className="text-xs text-slate-500">待上报同步项</Text>
-              <Text className="text-xs font-bold text-amber-600">
-                {todos.filter((t) => t.syncStatus === 'pending').length} 条
+            <View className="ml-3">
+              <Text className="text-[14px] font-semibold text-ink">
+                我 · User {myId === 'user_a' ? 'A' : 'B'}
+              </Text>
+              <Text className="text-[11px] text-muted mt-0.5">
+                登录后自动识别 · 空间主成员
               </Text>
             </View>
           </View>
-        </View>
 
-        {/* Account Exit */}
-        <TouchableOpacity
-          onPress={logout}
-          className="flex-row items-center justify-center bg-white border border-red-200 rounded-2xl p-4 active:bg-red-50"
-        >
-          <LogOut size={18} color="#ef4444" />
-          <Text className="text-red-600 font-bold text-sm ml-2">
-            退出到身份选择
+          {/* 账号 */}
+          <View className="mt-5 mb-[22px]">
+            <Text className="text-[10.5px] tracking-[1.2px] text-muted mb-2">账号</Text>
+            <View className="flex-row items-center justify-between py-[13px] border-b border-line">
+              <Text className="text-[13.5px] text-ink">账号</Text>
+              <Text className="text-[12px] text-muted">{myId}</Text>
+            </View>
+            <View className="flex-row items-center justify-between py-[13px] border-b border-line">
+              <Text className="text-[13.5px] text-ink">Partner</Text>
+              <View className="flex-row items-center">
+                <View className="w-1.5 h-1.5 rounded-full bg-idb mr-1.5" />
+                <Text className="text-[12px] text-muted">
+                  User {partnerUser.id === 'user_b' ? 'B' : 'A'}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* 同步 */}
+          <View className="mb-[22px]">
+            <Text className="text-[10.5px] tracking-[1.2px] text-muted mb-2">同步</Text>
+            <View className="flex-row items-center justify-between py-[13px] border-b border-line">
+              <Text className="text-[13.5px] text-ink">Partner 状态</Text>
+              <View className="flex-row items-center">
+                <View
+                  className="w-1.5 h-1.5 rounded-full mr-1.5"
+                  style={{ backgroundColor: partnerOnline ? '#527A63' : '#C9C2B5' }}
+                />
+                <Text className="text-[12px] text-muted">{partnerOnline ? '在线' : '离线'}</Text>
+              </View>
+            </View>
+            <View className="flex-row items-center justify-between py-[13px] border-b border-line">
+              <Text className="text-[13.5px] text-ink">本地缓存</Text>
+              <Text className="text-[12px] text-muted">{todos.length} 条待办</Text>
+            </View>
+            <View className="flex-row items-center justify-between py-[13px] border-b border-line">
+              <Text className="text-[13.5px] text-ink">待同步</Text>
+              <Text className="text-[12px] text-warn">{pendingCount} 条</Text>
+            </View>
+          </View>
+
+          {/* 开发工具 */}
+          <View className="mb-[22px]">
+            <Text className="text-[10.5px] tracking-[1.2px] text-muted mb-2">开发工具</Text>
+            <TouchableOpacity
+              onPress={triggerTestAlarm}
+              className="flex-row items-center justify-between py-[13px] border-b border-line"
+            >
+              <Text className="text-[13.5px] text-ink">测试 5 秒原生唤醒</Text>
+              <Text className="text-[12px] text-muted">›</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* 退出登录 */}
+          <TouchableOpacity onPress={logout} className="py-[13px]">
+            <Text className="text-[13.5px] text-clay">退出登录</Text>
+          </TouchableOpacity>
+
+          <Text className="text-[10.5px] text-[#B3ACA0] mt-1">
+            账号由预设分配，暂不支持自助注册与找回密码。
           </Text>
-        </TouchableOpacity>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };

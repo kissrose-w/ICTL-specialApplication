@@ -1,13 +1,14 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { CheckSquare, Bell, Heart, Settings } from 'lucide-react-native';
+import { ListChecks, Bell, Home, User } from 'lucide-react-native';
 import { TodosScreen } from '../modules/todos/screens/TodosScreen';
 import { RemindersScreen } from '../modules/reminders/screens/RemindersScreen';
 import { SpaceScreen } from '../modules/space/screens/SpaceScreen';
 import { NotesListScreen } from '../modules/notes/screens/NotesListScreen';
 import { NoteEditScreen } from '../modules/notes/screens/NoteEditScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { PAGE_NAME } from '../config/pageNaming';
 import type { MainTabParamList, SpaceStackParamList } from '../types/navigation';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -37,30 +38,31 @@ export const MainTabNavigator: React.FC = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#2563eb',
-        tabBarInactiveTintColor: '#94a3b8',
+        tabBarActiveTintColor: '#1E1C18',
+        tabBarInactiveTintColor: '#857E73',
         tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopColor: '#e2e8f0',
-          height: 62,
-          paddingBottom: 8,
+          backgroundColor: '#FFFFFF',
+          borderTopColor: '#E4DFD5',
+          height: 70,
+          paddingBottom: 10,
           paddingTop: 8,
         },
+        tabBarLabelStyle: { fontSize: 11 },
       }}
     >
       <Tab.Screen
         name="Todos"
         component={TodosScreen}
         options={{
-          tabBarLabel: '待办协同',
-          tabBarIcon: ({ color, size }) => <CheckSquare color={color} size={size} />,
+          tabBarLabel: PAGE_NAME,
+          tabBarIcon: ({ color, size }) => <ListChecks color={color} size={size} />,
         }}
       />
       <Tab.Screen
         name="Reminders"
         component={RemindersScreen}
         options={{
-          tabBarLabel: '精准提醒',
+          tabBarLabel: '提醒',
           tabBarIcon: ({ color, size }) => <Bell color={color} size={size} />,
         }}
       />
@@ -68,16 +70,16 @@ export const MainTabNavigator: React.FC = () => {
         name="Space"
         component={SpaceStackNavigator}
         options={{
-          tabBarLabel: '双人空间',
-          tabBarIcon: ({ color, size }) => <Heart color={color} size={size} />,
+          tabBarLabel: '空间',
+          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
         }}
       />
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}
         options={{
-          tabBarLabel: '设置',
-          tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
+          tabBarLabel: '我的',
+          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
         }}
       />
     </Tab.Navigator>
